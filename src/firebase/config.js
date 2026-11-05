@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAFtj-3ydVn-_Z870GJNnLLRjvR2NqZaOc",
-  authDomain: "bhplusauth.firebaseapp.com",
+  authDomain: "hbplus-auth-prafful.netlify.app",
   projectId: "bhplusauth",
   storageBucket: "bhplusauth.firebasestorage.app",
   messagingSenderId: "1097573153401",

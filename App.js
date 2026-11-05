@@ -17,7 +17,7 @@ import {
 
 import { auth } from "./src/firebase/config";
 
-const ALLOWED_DOMAIN = "bhplus.fit";
+const ALLOWED_DOMAIN = "hbplus.fit";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -66,7 +66,7 @@ export default function App() {
         await signOut(auth);
 
         setError(
-          "Access denied. Please use your official @bhplus.fit account."
+          "Access denied. Please use your official @hbplus.fit account."
         );
       }
     } catch (err) {
@@ -100,7 +100,7 @@ export default function App() {
         <View style={styles.card}>
           <Text style={styles.logo}>B+</Text>
 
-          <Text style={styles.title}>Welcome to BHPlus!</Text>
+          <Text style={styles.title}>Welcome to HBPlus!</Text>
 
           <Text style={styles.subtitle}>
             You are successfully authenticated.
@@ -128,7 +128,7 @@ export default function App() {
 
         <Text style={styles.subtitle}>
           Sign in with your official Google account
-          to access the BHPlus dashboard.
+          to access the HBPlus dashboard.
         </Text>
 
         <TouchableOpacity
@@ -145,7 +145,7 @@ export default function App() {
         ) : null}
 
         <Text style={styles.footer}>
-          Authorized users only • BHPlus
+          Authorized users only • © 2024 HBPlus
         </Text>
       </View>
     </View>

@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAFtj-3ydVn-_Z870GJNnLLRjvR2NqZaOc",
-  authDomain: "hbplusauth.firebaseapp.com",
+  authDomain: "bhplusauth.firebaseapp.com",
   projectId: "hbplusauth",
   storageBucket: "hbplusauth.firebasestorage.app",
   messagingSenderId: "1097573153401",

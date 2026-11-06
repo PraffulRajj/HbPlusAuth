@@ -1,11 +1,13 @@
 
+
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  StyleSheet,
+  SafeAreaView,
 } from "react-native";
 
 import {
@@ -15,98 +17,217 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 
-import { auth } from "./src/firebase/config";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+
+import { auth, db } from "./src/firebase/config";
+
+// =====================================
+// CONFIGURATION
+// =====================================
 
 const ALLOWED_DOMAIN = "hbplus.fit";
 
+// TEMPORARY: Gmail allowed for testing.
+// Remove Gmail permission before final production deployment.
+const isAllowedEmail = (email) => {
+  const normalizedEmail = email?.toLowerCase() || "";
+
+  return (
+    normalizedEmail.endsWith(`@${ALLOWED_DOMAIN}`) ||
+    normalizedEmail.endsWith("@gmail.com")
+  );
+};
+
+// =====================================
+// FIRESTORE USER PROFILE
+// =====================================
+
+async function saveUserProfile(firebaseUser) {
+  const userRef = doc(db, "users", firebaseUser.uid);
+  const userSnapshot = await getDoc(userRef);
+
+  const userData = {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName || "Team Member",
+    photoURL: firebaseUser.photoURL || "",
+    lastLoginAt: serverTimestamp(),
+  };
+
+  if (!userSnapshot.exists()) {
+    await setDoc(userRef, {
+      ...userData,
+      role: "user",
+      createdAt: serverTimestamp(),
+    });
+
+    return "user";
+  }
+
+  await setDoc(userRef, userData, { merge: true });
+
+  return userSnapshot.data().role || "user";
+}
+
+// =====================================
+// MAIN APP
+// =====================================
+
 export default function App() {
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState("user");
+
   const [loading, setLoading] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // =====================================
+  // AUTHENTICATION LISTENER
+  // =====================================
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        const email = currentUser.email?.toLowerCase() || "";
-
-        if (email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-          setUser(currentUser);
-          setError("");
-        } else {
-          setUser(null);
-          setError("Access denied. Please use your official domain account.");
-
-          signOut(auth);
-        }
-      } else {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
         setUser(null);
+        setUserRole("user");
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
+      try {
+        const email = currentUser.email?.toLowerCase() || "";
+
+        // Check email authorization
+        if (!isAllowedEmail(email)) {
+          await signOut(auth);
+
+          setUser(null);
+          setUserRole("user");
+
+          setError(
+            "Unauthorized account. Please use an authorized company account."
+          );
+
+          setLoading(false);
+          return;
+        }
+
+        // Save profile in Firestore
+        const role = await saveUserProfile(currentUser);
+
+        setUser(currentUser);
+        setUserRole(role);
+        setError("");
+      } catch (err) {
+        console.error("Authentication/Profile Error:", err);
+
+        setError(
+          err.message || "Unable to load your profile. Please try again."
+        );
+
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     });
 
     return unsubscribe;
   }, []);
 
-  const handleGoogleLogin = async () => {
-    setError("");
+  // =====================================
+  // GOOGLE LOGIN
+  // =====================================
 
+  const handleGoogleLogin = async () => {
     try {
+      setLoginLoading(true);
+      setError("");
+
       const provider = new GoogleAuthProvider();
 
       provider.setCustomParameters({
         prompt: "select_account",
       });
 
-      const result = await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, provider);
 
-      const email = result.user.email?.toLowerCase() || "";
-
-      if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-        await signOut(auth);
-
-        setError(
-          "Access denied. Please use your official @hbplus.fit account."
-        );
-      }
+      // Auth listener handles email validation and profile creation.
     } catch (err) {
-      console.log(err);
-      setError(err.message || "Google authentication failed.");
+      console.error("Google Login Error:", err);
+
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Sign-in was cancelled. Please try again.");
+      } else if (err.code === "auth/popup-blocked") {
+        setError("Popup blocked. Please allow popups and try again.");
+      } else {
+        setError(err.message || "Google authentication failed.");
+      }
+    } finally {
+      setLoginLoading(false);
     }
   };
+
+  // =====================================
+  // LOGOUT
+  // =====================================
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+
       setUser(null);
+      setUserRole("user");
       setError("");
     } catch (err) {
-      setError("Logout failed.");
+      console.error("Logout Error:", err);
+      setError("Unable to logout. Please try again.");
     }
   };
 
+  // =====================================
+  // LOADING SCREEN
+  // =====================================
+
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.subtitle}>Checking authentication...</Text>
-      </View>
+      <SafeAreaView style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#4F7CFF" />
+        <Text style={styles.loadingText}>Loading HBPlus...</Text>
+      </SafeAreaView>
     );
   }
 
+  // =====================================
+  // DASHBOARD
+  // =====================================
+
   if (user) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.logo}>B+</Text>
+          <Text style={styles.logo}>HBPLUS</Text>
 
-          <Text style={styles.title}>Welcome to HBPlus!</Text>
+          <Text style={styles.successTitle}>Welcome back!</Text>
 
-          <Text style={styles.subtitle}>
-            You are successfully authenticated.
+          <Text style={styles.label}>Name</Text>
+          <Text style={styles.value}>
+            {user.displayName || "Team Member"}
           </Text>
 
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.label}>Email</Text>
+          <Text style={styles.value}>{user.email}</Text>
+
+          <Text style={styles.label}>Role</Text>
+          <Text style={styles.role}>{userRole.toUpperCase()}</Text>
+
+          <Text style={styles.successMessage}>
+            Google authentication successful.
+          </Text>
 
           <TouchableOpacity
             style={styles.button}
@@ -115,112 +236,196 @@ export default function App() {
             <Text style={styles.buttonText}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  // =====================================
+  // LOGIN SCREEN
+  // =====================================
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.logo}>B+</Text>
+        <Text style={styles.logo}>HBPLUS</Text>
 
         <Text style={styles.title}>Welcome Back</Text>
 
         <Text style={styles.subtitle}>
-          Sign in with your official Google account
-          to access the HBPlus dashboard.
+          Sign in with your Google account to continue.
+        </Text>
+
+        <Text style={styles.domainText}>
+          Company email: @{ALLOWED_DOMAIN}
         </Text>
 
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            loginLoading && styles.disabledButton,
+          ]}
           onPress={handleGoogleLogin}
+          disabled={loginLoading}
         >
-          <Text style={styles.buttonText}>
-            Continue with Google
-          </Text>
+          {loginLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>
+              Continue with Google
+            </Text>
+          )}
         </TouchableOpacity>
 
         {error ? (
-          <Text style={styles.error}>{error}</Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
         ) : null}
 
         <Text style={styles.footer}>
-          Authorized users only • © 2024 HBPlus
+          Secure sign-in powered by Firebase
         </Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
+
+// =====================================
+// STYLES
+// =====================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F5F9",
+    backgroundColor: "#F4F7FC",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
 
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F4F7FC",
+  },
+
   card: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 450,
     backgroundColor: "#FFFFFF",
-    padding: 35,
+    padding: 30,
     borderRadius: 20,
-    alignItems: "center",
     elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 5 },
   },
 
   logo: {
-    fontSize: 38,
-    fontWeight: "bold",
-    color: "#2563EB",
-    marginBottom: 20,
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#4F7CFF",
+    marginBottom: 25,
+    textAlign: "center",
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#111827",
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#101828",
+    textAlign: "center",
     marginBottom: 12,
   },
 
   subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
+    fontSize: 16,
+    color: "#667085",
     textAlign: "center",
     marginBottom: 25,
   },
 
-  email: {
-    fontSize: 15,
-    color: "#374151",
+  domainText: {
+    fontSize: 14,
+    color: "#667085",
+    textAlign: "center",
     marginBottom: 20,
   },
 
   button: {
-    width: "100%",
-    backgroundColor: "#2563EB",
-    padding: 16,
-    borderRadius: 10,
+    backgroundColor: "#101828",
+    padding: 18,
+    borderRadius: 12,
     alignItems: "center",
+    marginTop: 15,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
   },
 
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
-  error: {
-    color: "#DC2626",
+  errorBox: {
+    backgroundColor: "#FEF2F2",
+    padding: 15,
+    borderRadius: 10,
     marginTop: 20,
+  },
+
+  errorText: {
+    color: "#DC2626",
     textAlign: "center",
   },
 
   footer: {
+    fontSize: 13,
+    color: "#98A2B3",
+    textAlign: "center",
     marginTop: 25,
-    color: "#9CA3AF",
-    fontSize: 12,
+  },
+
+  loadingText: {
+    marginTop: 15,
+    color: "#667085",
+  },
+
+  successTitle: {
+    fontSize: 25,
+    fontWeight: "800",
+    color: "#101828",
+    textAlign: "center",
+    marginBottom: 25,
+  },
+
+  label: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#667085",
+    marginTop: 15,
+  },
+
+  value: {
+    fontSize: 16,
+    color: "#101828",
+    marginTop: 5,
+  },
+
+  role: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#4F7CFF",
+    marginTop: 5,
+  },
+
+  successMessage: {
+    color: "#16A34A",
+    marginTop: 20,
+    textAlign: "center",
   },
 });

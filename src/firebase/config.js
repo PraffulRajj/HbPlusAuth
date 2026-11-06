@@ -1,10 +1,12 @@
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAFtj-3ydVn-_Z870GJNnLLRjvR2NqZaOc",
   authDomain: "bhplusauth.firebaseapp.com",
-  projectId: "hbplusauth",
+  projectId: "bhplusauth",
   storageBucket: "hbplusauth.firebasestorage.app",
   messagingSenderId: "1097573153401",
   appId: "1:1097573153401:web:f5b9e3a7f26cadc9a172a8",
@@ -14,3 +16,4 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);

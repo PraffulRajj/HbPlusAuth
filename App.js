@@ -42,8 +42,8 @@ const isAllowedEmail = (email) => {
   const normalizedEmail = email?.toLowerCase() || "";
 
   return (
-    normalizedEmail.endsWith(`@${ALLOWED_DOMAIN}`) ||
-    normalizedEmail.endsWith("@gmail.com")
+    normalizedEmail.endsWith("@hbplus.fit") ||
+    normalizedEmail === "praffulraj123@gmail.com"
   );
 };
 

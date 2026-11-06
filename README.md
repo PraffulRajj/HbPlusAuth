@@ -1,44 +1,57 @@
-# HbPlusAuth
+# HBPlus Authentication System
 
-A cross-platform Google Authentication application built using React Native, Expo, and Firebase. The application restricts access to users with an authorized `@hbplus.fit` email address.
+A secure authentication and role-based access management application built using React Native Web and Firebase.
 
 ## Features
 
-- Google Sign-In using Firebase Authentication
-- Email domain restriction (`@hbplus.fit`)
-- Unauthorized user access rejection
-- Login and authentication state handling
-- Responsive interface using Expo and React Native Web
-- Protected dashboard and logout functionality
+- Google Authentication using Firebase
+- Company email domain authorization (`@hbplus.fit`)
+- Firebase Authentication state management
+- Firestore user profile creation and storage
+- Role-based access control (Admin and User)
+- Admin dashboard with registered user management
+- Protected dashboard access
+- Logout functionality
+- Responsive interface
 
 ## Tech Stack
 
-- React Native
-- Expo
 - React Native Web
-- Firebase Authentication
 - JavaScript
+- Firebase Authentication
+- Cloud Firestore
+- Google OAuth
+- Netlify
 
-## Getting Started
+## Authentication Flow
 
-### Prerequisites
+1. User signs in using Google.
+2. Firebase authenticates the user.
+3. Application validates the user's email domain.
+4. User profile is created or updated in Firestore.
+5. User role is retrieved from Firestore.
+6. Admin or User dashboard is displayed based on the assigned role.
 
-- Node.js and npm
-- Git
-- VS Code
-- Firebase account
+## Firestore Structure
 
-### Installation
+```text
+users/
+  {uid}/
+    uid
+    email
+    displayName
+    photoURL
+    role
+    createdAt
+    lastLoginAt
+```
+
+## Installation
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/PraffulRajJ/HbPlusAuth.git
-```
-
-Navigate to the project directory:
-
-```bash
+git clone https://github.com/PraffulRajj/HbPlusAuth.git
 cd HbPlusAuth
 ```
 
@@ -48,68 +61,36 @@ Install dependencies:
 npm install
 ```
 
+Configure Firebase credentials in:
+
+```text
+src/firebase/config.js
+```
+
 Start the application:
 
 ```bash
-npx expo start --web
+npm start
 ```
 
-The application will be available at:
+## Security
 
-```text
-http://localhost:8081
-```
-
-## Firebase Configuration
-
-1. Create a Firebase project.
-2. Enable Google as a sign-in provider under Authentication.
-3. Configure the Firebase Web SDK.
-4. Add `localhost` to Firebase Authentication's authorized domains.
-5. Configure the Firebase authentication settings.
-
-The Firebase configuration is located in:
-
-`src/firebase/config.js`
-
-## Authentication Flow
-
-1. The user clicks **Continue with Google**.
-2. Google authentication is initiated through Firebase.
-3. The application retrieves the authenticated user's email.
-4. The email domain is checked against the authorized domain.
-5. Users with the authorized `@hbplus.fit` domain can access the application.
-6. Unauthorized users receive an access-denied message.
-7. Authorized users can access the dashboard and log out.
-
-## Domain Restriction
-
-The application uses the following authorized domain:
-
-```javascript
-const ALLOWED_DOMAIN = "hbplus.fit";
-```
-
-Only users whose email addresses end with `@hbplus.fit` should be allowed access.
-
-Domain validation should be enforced using the authenticated user's email and appropriate backend or Firebase security controls.
-
-## Testing
-
-| Test Case | Expected Result |
-|---|---|
-| Authorized `@hbplus.fit` account | Dashboard access |
-| Personal Gmail account | Access denied |
-| Logout | Return to login screen |
+- Firebase Authentication handles user identity.
+- Firestore Security Rules restrict access.
+- Users cannot modify their own role.
+- Admin access is restricted through role checks.
+- Firebase manages authentication token refresh.
 
 ## Deployment
 
-The web application can be deployed using Netlify.
+Live Application: https://hbplus-auth-prafful.netlify.app
 
-Deployment link: **Add your live deployment URL here after deployment.**
+GitHub Repository: https://github.com/PraffulRajj/HbPlusAuth
 
-## Author
+## Developer
 
 Prafful Raj
 
-GitHub: [PraffulRajJ](https://github.com/PraffulRajJ)
+B.Tech Computer Science Engineering
+
+Amity University Jharkhand

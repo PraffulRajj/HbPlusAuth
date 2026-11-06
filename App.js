@@ -1,6 +1,4 @@
 
-
-
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -36,8 +34,9 @@ import { auth, db } from "./src/firebase/config";
 
 const ALLOWED_DOMAIN = "hbplus.fit";
 
-// TEMPORARY TESTING ONLY
-// Gmail access ko production se pehle remove karna.
+// Temporary Gmail testing exception.
+// Remove before final submission if strict company-domain
+// restriction is required.
 const isAllowedEmail = (email) => {
   const normalizedEmail = email?.toLowerCase() || "";
 
@@ -85,7 +84,6 @@ async function saveUserProfile(firebaseUser) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState("user");
-
   const [usersList, setUsersList] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -103,8 +101,7 @@ export default function App() {
       setUsersLoading(true);
       setError("");
 
-      const usersRef = collection(db, "users");
-      const snapshot = await getDocs(usersRef);
+      const snapshot = await getDocs(collection(db, "users"));
 
       const users = snapshot.docs.map((document) => ({
         id: document.id,
@@ -140,7 +137,6 @@ export default function App() {
           const email =
             currentUser.email?.toLowerCase() || "";
 
-          // Validate email
           if (!isAllowedEmail(email)) {
             await signOut(auth);
 
@@ -156,14 +152,12 @@ export default function App() {
             return;
           }
 
-          // Save profile and retrieve role
           const role = await saveUserProfile(currentUser);
 
           setUser(currentUser);
           setUserRole(role);
           setError("");
 
-          // Admin users can fetch all profiles
           if (role === "admin") {
             await fetchAllUsers();
           } else {
@@ -201,8 +195,6 @@ export default function App() {
       });
 
       await signInWithPopup(auth, provider);
-
-      // Auth listener handles validation and profile creation.
     } catch (err) {
       console.error("Google Login Error:", err);
 
@@ -244,14 +236,22 @@ export default function App() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centerContainer}>
+      <SafeAreaView style={styles.loadingScreen}>
+        <View style={styles.brandRow}>
+          <View style={styles.brandIcon}>
+            <Text style={styles.brandIconText}>H</Text>
+          </View>
+
+          <Text style={styles.brandName}>HBPLUS</Text>
+        </View>
+
         <ActivityIndicator
           size="large"
-          color="#4F7CFF"
+          color="#69E0D0"
         />
 
         <Text style={styles.loadingText}>
-          Loading HBPlus...
+          Preparing your workspace...
         </Text>
       </SafeAreaView>
     );
@@ -262,81 +262,237 @@ export default function App() {
   // ======================================
 
   if (user) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.card}>
-            <Text style={styles.logo}>HBPLUS</Text>
+    const isAdmin = userRole === "admin";
 
-            <Text style={styles.successTitle}>
-              Welcome back!
+    return (
+      <SafeAreaView style={styles.dashboard}>
+        <ScrollView contentContainerStyle={styles.dashboardContent}>
+
+          {/* HEADER */}
+
+          <View style={styles.header}>
+            <View style={styles.brandRow}>
+              <View style={styles.brandIconSmall}>
+                <Text style={styles.brandIconText}>H</Text>
+              </View>
+
+              <View>
+                <Text style={styles.brandName}>HBPLUS</Text>
+                <Text style={styles.brandSubtitle}>
+                  TEAM WORKSPACE
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.logoutText}>Sign out ↗</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* HERO */}
+
+          <View style={styles.heroCard}>
+            <Text style={styles.heroLabel}>
+              YOUR WORKSPACE
             </Text>
 
-            <View style={styles.infoSection}>
-              <Text style={styles.label}>Name</Text>
+            <Text style={styles.heroTitle}>
+              Good to see you,{"\n"}
+              {user.displayName?.split(" ")[0] || "there"}.
+            </Text>
 
-              <Text style={styles.value}>
-                {user.displayName || "Team Member"}
+            <Text style={styles.heroDescription}>
+              Your secure HBPlus workspace is ready.
+              Everything you need, in one place.
+            </Text>
+
+            <View style={styles.statusPill}>
+              <View style={styles.statusDot} />
+
+              <Text style={styles.statusText}>
+                Authenticated with Google
+              </Text>
+            </View>
+          </View>
+
+          {/* OVERVIEW */}
+
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionLabel}>
+                OVERVIEW
               </Text>
 
-              <Text style={styles.label}>Email</Text>
-
-              <Text style={styles.value}>
-                {user.email}
-              </Text>
-
-              <Text style={styles.label}>Role</Text>
-
-              <Text style={styles.role}>
-                {userRole.toUpperCase()}
+              <Text style={styles.sectionTitle}>
+                Account overview
               </Text>
             </View>
 
-            <Text style={styles.successMessage}>
-              Google authentication successful.
+            <View
+              style={[
+                styles.roleBadge,
+                isAdmin && styles.adminBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.roleBadgeText,
+                  isAdmin && styles.adminBadgeText,
+                ]}
+              >
+                {isAdmin ? "ADMIN" : "MEMBER"}
+              </Text>
+            </View>
+          </View>
+
+          {/* STATS */}
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                ACCOUNT STATUS
+              </Text>
+
+              <Text style={styles.statValue}>
+                Active
+              </Text>
+
+              <Text style={styles.statHint}>
+                Google verified
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                ACCESS LEVEL
+              </Text>
+
+              <Text style={styles.statValue}>
+                {isAdmin ? "Admin" : "Member"}
+              </Text>
+
+              <Text style={styles.statHint}>
+                Workspace access
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                SECURITY
+              </Text>
+
+              <Text style={styles.statValue}>
+                Protected
+              </Text>
+
+              <Text style={styles.statHint}>
+                Firebase Authentication
+              </Text>
+            </View>
+          </View>
+
+          {/* PROFILE */}
+
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>
+              PROFILE
             </Text>
 
-            {/* ADMIN DASHBOARD */}
+            <Text style={styles.cardTitle}>
+              Your details
+            </Text>
 
-            {userRole === "admin" && (
-              <View style={styles.adminSection}>
-                <Text style={styles.adminTitle}>
-                  Admin Dashboard
+            <View style={styles.divider} />
+
+            <Text style={styles.fieldLabel}>
+              FULL NAME
+            </Text>
+
+            <Text style={styles.fieldValue}>
+              {user.displayName || "HBPlus Member"}
+            </Text>
+
+            <Text style={styles.fieldLabel}>
+              EMAIL ADDRESS
+            </Text>
+
+            <Text style={styles.fieldValue}>
+              {user.email}
+            </Text>
+
+            <Text style={styles.fieldLabel}>
+              WORKSPACE ROLE
+            </Text>
+
+            <Text style={styles.fieldValue}>
+              {isAdmin ? "Administrator" : "Standard user"}
+            </Text>
+          </View>
+
+          {/* ADMIN DASHBOARD */}
+
+          {isAdmin ? (
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>
+                ADMINISTRATION
+              </Text>
+
+              <Text style={styles.cardTitle}>
+                Member directory
+              </Text>
+
+              <Text style={styles.cardDescription}>
+                Workspace accounts registered in Firebase.
+              </Text>
+
+              <View style={styles.adminCountBox}>
+                <Text style={styles.adminCount}>
+                  {usersList.length}
                 </Text>
 
-                <Text style={styles.adminSubtitle}>
-                  Registered Users: {usersList.length}
+                <Text style={styles.adminCountLabel}>
+                  REGISTERED MEMBERS
                 </Text>
+              </View>
 
-                <TouchableOpacity
-                  style={styles.refreshButton}
-                  onPress={fetchAllUsers}
-                  disabled={usersLoading}
-                >
-                  <Text style={styles.refreshButtonText}>
-                    {usersLoading
-                      ? "Refreshing..."
-                      : "Refresh Users"}
-                  </Text>
-                </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={fetchAllUsers}
+                disabled={usersLoading}
+              >
                 {usersLoading ? (
-                  <ActivityIndicator
-                    size="large"
-                    color="#4F7CFF"
-                  />
-                ) : usersList.length === 0 ? (
-                  <Text style={styles.emptyText}>
-                    No users found.
-                  </Text>
+                  <ActivityIndicator color="#0B1724" />
                 ) : (
-                  usersList.map((item) => (
-                    <View
-                      key={item.id}
-                      style={styles.userCard}
-                    >
+                  <Text style={styles.refreshButtonText}>
+                    ↻ Refresh directory
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {usersLoading ? (
+                <ActivityIndicator color="#0E9D8C" />
+              ) : usersList.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No users found.
+                </Text>
+              ) : (
+                usersList.map((item) => (
+                  <View
+                    key={item.id}
+                    style={styles.userCard}
+                  >
+                    <View style={styles.userAvatar}>
+                      <Text style={styles.userAvatarText}>
+                        {(item.displayName || item.email || "U")
+                          .charAt(0)
+                          .toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={styles.userInfo}>
                       <Text style={styles.userName}>
                         {item.displayName || "Unknown User"}
                       </Text>
@@ -349,46 +505,39 @@ export default function App() {
                         Role: {(item.role || "user").toUpperCase()}
                       </Text>
                     </View>
-                  ))
-                )}
-              </View>
-            )}
+                  </View>
+                ))
+              )}
+            </View>
+          ) : (
+            <View style={styles.memberCard}>
+              <Text style={styles.memberIcon}>✦</Text>
 
-            {/* USER DASHBOARD */}
-
-            {userRole !== "admin" && (
-              <View style={styles.userDashboard}>
-                <Text style={styles.userDashboardTitle}>
-                  User Dashboard
-                </Text>
-
-                <Text style={styles.userDashboardText}>
-                  Welcome to your HBPlus workspace.
-                </Text>
-
-                <Text style={styles.userDashboardText}>
-                  You are logged in as a standard user.
-                </Text>
-              </View>
-            )}
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>
-                  {error}
-                </Text>
-              </View>
-            ) : null}
-
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleLogout}
-            >
-              <Text style={styles.buttonText}>
-                Logout
+              <Text style={styles.cardTitle}>
+                Welcome to HBPlus
               </Text>
-            </TouchableOpacity>
-          </View>
+
+              <Text style={styles.cardDescription}>
+                You are signed in as a standard member.
+                Your account access is managed by your
+                workspace administrator.
+              </Text>
+            </View>
+          )}
+
+          {/* ERROR */}
+
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.footer}>
+            HBPLUS · Secure workspace · Powered by Firebase
+          </Text>
         </ScrollView>
       </SafeAreaView>
     );
@@ -399,287 +548,781 @@ export default function App() {
   // ======================================
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.logo}>HBPLUS</Text>
+    <SafeAreaView style={styles.loginScreen}>
+      <ScrollView contentContainerStyle={styles.loginContent}>
 
-        <Text style={styles.title}>
-          Welcome Back
-        </Text>
+        {/* BRAND */}
 
-        <Text style={styles.subtitle}>
-          Sign in with your Google account to continue.
-        </Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandIcon}>
+            <Text style={styles.brandIconText}>H</Text>
+          </View>
 
-        <Text style={styles.domainText}>
-          Official company email: @{ALLOWED_DOMAIN}
-        </Text>
+          <View>
+            <Text style={styles.brandName}>HBPLUS</Text>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            loginLoading && styles.disabledButton,
-          ]}
-          onPress={handleGoogleLogin}
-          disabled={loginLoading}
-        >
-          {loginLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>
-              Continue with Google
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>
-              {error}
+            <Text style={styles.brandSubtitle}>
+              TEAM WORKSPACE
             </Text>
           </View>
-        ) : null}
+        </View>
+
+        {/* LOGIN LAYOUT */}
+
+        <View style={styles.loginLayout}>
+
+          {/* LEFT SIDE */}
+
+          <View style={styles.loginIntro}>
+            <Text style={styles.loginEyebrow}>
+              A BETTER WAY TO WORK
+            </Text>
+
+            <Text style={styles.loginHeadline}>
+              Your team’s{"\n"}
+              space to{" "}
+              <Text style={styles.headlineAccent}>
+                connect.
+              </Text>
+            </Text>
+
+            <Text style={styles.loginDescription}>
+              A secure, streamlined workspace for the
+              HBPlus team. Sign in to access your
+              account and workspace.
+            </Text>
+
+            <View style={styles.features}>
+              <Text style={styles.featureText}>
+                ✓  Secure Google authentication
+              </Text>
+
+              <Text style={styles.featureText}>
+                ✓  Company account access control
+              </Text>
+
+              <Text style={styles.featureText}>
+                ✓  Role-based workspace permissions
+              </Text>
+            </View>
+          </View>
+
+          {/* LOGIN CARD */}
+
+          <View style={styles.loginCard}>
+            <Text style={styles.loginCardEyebrow}>
+              WELCOME BACK
+            </Text>
+
+            <Text style={styles.loginCardTitle}>
+              Sign in to HBPlus
+            </Text>
+
+            <Text style={styles.loginCardSubtitle}>
+              Use your authorized Google account
+              to continue.
+            </Text>
+
+            <View style={styles.companyEmailBox}>
+              <Text style={styles.emailIcon}>@</Text>
+
+              <View>
+                <Text style={styles.companyEmailLabel}>
+                  COMPANY EMAIL
+                </Text>
+
+                <Text style={styles.companyEmailValue}>
+                  @{ALLOWED_DOMAIN}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                loginLoading && styles.disabledButton,
+              ]}
+              onPress={handleGoogleLogin}
+              disabled={loginLoading}
+              activeOpacity={0.85}
+            >
+              {loginLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.googleIcon}>G</Text>
+
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+
+                  <Text style={styles.googleArrow}>→</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>
+                  {error}
+                </Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.secureNote}>
+              🔒 Secure sign-in powered by Firebase Authentication.
+            </Text>
+
+            <Text style={styles.loginFinePrint}>
+              Secure access for authorized HBPlus team members.
+            </Text>
+          </View>
+        </View>
 
         <Text style={styles.footer}>
-          Secure sign-in powered by Firebase
+          HBPLUS · INTERNAL WORKSPACE
         </Text>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 // ======================================
-// STYLES
+// MODERN PROFESSIONAL STYLES
 // ======================================
 
 const styles = StyleSheet.create({
-  container: {
+
+  // Loading screen
+
+  loadingScreen: {
     flex: 1,
-    backgroundColor: "#F4F7FC",
-    justifyContent: "center",
+    backgroundColor: "#0B1724",
     alignItems: "center",
-    padding: 20,
-  },
-
-  centerContainer: {
-    flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F4F7FC",
   },
 
-  scrollContent: {
-    flexGrow: 1,
+  loadingText: {
+    color: "#9AABBC",
+    marginTop: 15,
+    fontSize: 13,
+  },
+
+  // Brand
+
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  brandIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#69E0D0",
+    alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
+  },
+
+  brandIconSmall: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#69E0D0",
     alignItems: "center",
-    width: "100%",
-    paddingVertical: 20,
+    justifyContent: "center",
+    marginRight: 11,
   },
 
-  card: {
-    width: "100%",
-    maxWidth: 500,
-    backgroundColor: "#FFFFFF",
-    padding: 30,
-    borderRadius: 20,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 5 },
-  },
-
-  logo: {
-    fontSize: 28,
+  brandIconText: {
+    color: "#0B1724",
+    fontSize: 24,
     fontWeight: "900",
-    color: "#4F7CFF",
-    marginBottom: 25,
-    textAlign: "center",
   },
 
-  title: {
-    fontSize: 30,
+  brandName: {
+    color: "#F4F8FC",
+    fontSize: 19,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+
+  brandSubtitle: {
+    color: "#8194A8",
+    fontSize: 9,
     fontWeight: "800",
-    color: "#101828",
-    textAlign: "center",
-    marginBottom: 12,
+    letterSpacing: 2,
+    marginTop: 3,
   },
 
-  subtitle: {
-    fontSize: 16,
-    color: "#667085",
-    textAlign: "center",
-    marginBottom: 25,
+  // Login screen
+
+  loginScreen: {
+    flex: 1,
+    backgroundColor: "#0B1724",
   },
 
-  domainText: {
-    fontSize: 14,
-    color: "#667085",
-    textAlign: "center",
+  loginContent: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingVertical: 30,
+    justifyContent: "center",
+  },
+
+  loginLayout: {
+    width: "100%",
+    maxWidth: 1120,
+    alignSelf: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  loginIntro: {
+    flex: 1,
+    minWidth: 280,
+    maxWidth: 540,
+    paddingRight: 30,
+    paddingVertical: 24,
+  },
+
+  loginEyebrow: {
+    color: "#69E0D0",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 2.5,
     marginBottom: 20,
   },
 
-  button: {
-    backgroundColor: "#101828",
-    padding: 18,
-    borderRadius: 12,
+  loginHeadline: {
+    color: "#F4F8FC",
+    fontSize: 52,
+    lineHeight: 60,
+    fontWeight: "800",
+    letterSpacing: -1.8,
+  },
+
+  headlineAccent: {
+    color: "#69E0D0",
+  },
+
+  loginDescription: {
+    color: "#9AABBC",
+    fontSize: 16,
+    lineHeight: 26,
+    maxWidth: 440,
+    marginTop: 22,
+  },
+
+  features: {
+    marginTop: 30,
+  },
+
+  featureText: {
+    color: "#C0CBD6",
+    fontSize: 14,
+    marginBottom: 13,
+  },
+
+  loginCard: {
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 30,
+    marginVertical: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 10,
+  },
+
+  loginCardEyebrow: {
+    color: "#0E9D8C",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 2.2,
+    marginBottom: 10,
+  },
+
+  loginCardTitle: {
+    color: "#122333",
+    fontSize: 28,
+    fontWeight: "800",
+  },
+
+  loginCardSubtitle: {
+    color: "#6D7B88",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 9,
+    marginBottom: 26,
+  },
+
+  companyEmailBox: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#F1F8F7",
+    borderWidth: 1,
+    borderColor: "#D8EFEB",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 18,
+  },
+
+  emailIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: "#D8F3EF",
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: "#087F72",
+    fontSize: 20,
+    fontWeight: "800",
+    marginRight: 12,
+    overflow: "hidden",
+  },
+
+  companyEmailLabel: {
+    color: "#66827F",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
+
+  companyEmailValue: {
+    color: "#163D3A",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+
+  googleButton: {
+    minHeight: 56,
+    borderRadius: 13,
+    backgroundColor: "#122333",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+
+  googleIcon: {
+    color: "#4285F4",
+    backgroundColor: "#FFFFFF",
+    fontSize: 19,
+    fontWeight: "900",
+    borderRadius: 7,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    marginRight: 12,
+  },
+
+  googleButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+  },
+
+  googleArrow: {
+    color: "#69E0D0",
+    fontSize: 22,
+    fontWeight: "600",
+  },
+
+  secureNote: {
+    color: "#71818D",
+    fontSize: 11,
+    marginTop: 22,
+    lineHeight: 18,
+  },
+
+  loginFinePrint: {
+    color: "#9AA5AF",
+    fontSize: 11,
+    textAlign: "center",
     marginTop: 20,
+    lineHeight: 17,
   },
 
   disabledButton: {
     opacity: 0.6,
   },
 
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  // Dashboard
+
+  dashboard: {
+    flex: 1,
+    backgroundColor: "#F3F6F8",
   },
 
-  errorBox: {
-    backgroundColor: "#FEF2F2",
-    padding: 15,
+  dashboardContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    maxWidth: 1180,
+    width: "100%",
+    alignSelf: "center",
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
+  },
+
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: "#D6E0E6",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    marginTop: 20,
   },
 
-  errorText: {
-    color: "#DC2626",
-    textAlign: "center",
-  },
-
-  footer: {
-    fontSize: 13,
-    color: "#98A2B3",
-    textAlign: "center",
-    marginTop: 25,
-  },
-
-  loadingText: {
-    marginTop: 15,
-    color: "#667085",
-  },
-
-  successTitle: {
-    fontSize: 25,
-    fontWeight: "800",
-    color: "#101828",
-    textAlign: "center",
-    marginBottom: 25,
-  },
-
-  infoSection: {
-    marginTop: 10,
-  },
-
-  label: {
+  logoutText: {
+    color: "#324657",
     fontSize: 13,
     fontWeight: "700",
-    color: "#667085",
-    marginTop: 15,
   },
 
-  value: {
-    fontSize: 16,
-    color: "#101828",
-    marginTop: 5,
+  heroCard: {
+    backgroundColor: "#0B1724",
+    borderRadius: 24,
+    padding: 32,
+    minHeight: 245,
+    justifyContent: "center",
   },
 
-  role: {
-    fontSize: 18,
+  heroLabel: {
+    color: "#69E0D0",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 2.5,
+    marginBottom: 15,
+  },
+
+  heroTitle: {
+    color: "#F6FAFC",
+    fontSize: 34,
+    lineHeight: 41,
     fontWeight: "800",
-    color: "#4F7CFF",
+  },
+
+  heroDescription: {
+    color: "#A7B6C3",
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 12,
+    maxWidth: 560,
+  },
+
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#18313B",
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 18,
+  },
+
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#69E0D0",
+    marginRight: 8,
+  },
+
+  statusText: {
+    color: "#BFEAE4",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  // Overview
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 30,
+    marginBottom: 16,
+  },
+
+  sectionLabel: {
+    color: "#718391",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 2,
+    marginBottom: 5,
+  },
+
+  sectionTitle: {
+    color: "#142737",
+    fontSize: 23,
+    fontWeight: "800",
+  },
+
+  roleBadge: {
+    backgroundColor: "#E1F4F0",
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+
+  roleBadgeText: {
+    color: "#087F72",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+
+  adminBadge: {
+    backgroundColor: "#E9E8FF",
+  },
+
+  adminBadgeText: {
+    color: "#5A4BC4",
+  },
+
+  // Stats
+
+  statsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
+  },
+
+  statCard: {
+    flex: 1,
+    minWidth: 190,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E7EDF1",
+    borderRadius: 16,
+    padding: 20,
+    margin: 6,
+  },
+
+  statLabel: {
+    color: "#82919D",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+
+  statValue: {
+    color: "#172E40",
+    fontSize: 23,
+    fontWeight: "800",
+    marginTop: 12,
+  },
+
+  statHint: {
+    color: "#82919D",
+    fontSize: 11,
     marginTop: 5,
   },
 
-  successMessage: {
-    color: "#16A34A",
-    marginTop: 20,
+  // Cards
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E7EDF1",
+    borderRadius: 18,
+    padding: 24,
+    marginTop: 18,
+  },
+
+  cardLabel: {
+    color: "#0E9D8C",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.8,
+    marginBottom: 6,
+  },
+
+  cardTitle: {
+    color: "#172E40",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+
+  cardDescription: {
+    color: "#7C8B97",
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 7,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "#EAF0F3",
+    marginVertical: 20,
+  },
+
+  fieldLabel: {
+    color: "#8A98A3",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+
+  fieldValue: {
+    color: "#243B4D",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Admin
+
+  adminCountBox: {
+    backgroundColor: "#E4F5F1",
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    alignSelf: "flex-start",
+    marginTop: 18,
+  },
+
+  adminCount: {
+    color: "#087F72",
+    fontSize: 25,
+    fontWeight: "900",
     textAlign: "center",
   },
 
-  adminSection: {
-    marginTop: 30,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-  },
-
-  adminTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#101828",
-    marginBottom: 8,
-  },
-
-  adminSubtitle: {
-    fontSize: 15,
-    color: "#667085",
-    marginBottom: 15,
+  adminCountLabel: {
+    color: "#508C83",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1.3,
   },
 
   refreshButton: {
-    backgroundColor: "#E8EEFF",
-    padding: 12,
+    alignSelf: "flex-start",
+    backgroundColor: "#69E0D0",
     borderRadius: 10,
+    minHeight: 42,
+    paddingHorizontal: 16,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 15,
-  },
-
-  refreshButtonText: {
-    color: "#315FEA",
-    fontWeight: "700",
-  },
-
-  userCard: {
-    backgroundColor: "#F4F7FC",
-    padding: 15,
-    borderRadius: 10,
+    marginTop: 22,
     marginBottom: 10,
   },
 
+  refreshButtonText: {
+    color: "#0B2B31",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F8FA",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#E8EEF2",
+  },
+
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: "#DDF4F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  userAvatarText: {
+    color: "#087F72",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  userInfo: {
+    flex: 1,
+  },
+
   userName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#101828",
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1C3446",
   },
 
   userEmail: {
-    fontSize: 14,
-    color: "#667085",
+    fontSize: 11,
+    color: "#718391",
     marginTop: 5,
   },
 
   userRole: {
-    fontSize: 13,
-    color: "#4F7CFF",
-    marginTop: 5,
-    fontWeight: "600",
+    fontSize: 10,
+    color: "#0E9D8C",
+    marginTop: 7,
+    fontWeight: "800",
   },
 
   emptyText: {
-    color: "#667085",
+    color: "#718391",
     marginVertical: 15,
+    textAlign: "center",
+    fontSize: 13,
   },
 
-  userDashboard: {
-    marginTop: 30,
-    padding: 20,
-    backgroundColor: "#F4F7FC",
+  memberCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E7EDF1",
+    borderRadius: 18,
+    padding: 24,
+    marginTop: 18,
+  },
+
+  memberIcon: {
+    color: "#0E9D8C",
+    fontSize: 24,
+    marginBottom: 12,
+  },
+
+  // Errors and footer
+
+  errorBox: {
+    backgroundColor: "#FFF1F1",
+    borderWidth: 1,
+    borderColor: "#FFD9D9",
+    padding: 14,
     borderRadius: 12,
+    marginTop: 20,
   },
 
-  userDashboardTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#101828",
-    marginBottom: 10,
+  errorText: {
+    color: "#B42318",
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 19,
   },
 
-  userDashboardText: {
-    fontSize: 14,
-    color: "#667085",
-    marginTop: 5,
+  footer: {
+    fontSize: 11,
+    color: "#95A2AE",
+    textAlign: "center",
+    marginTop: 30,
+    marginBottom: 12,
   },
 });
